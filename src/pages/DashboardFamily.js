@@ -45,7 +45,7 @@ const DashboardFamily = () => {
           return;
         }
 
-        const url = `http://localhost:5000/api/family/${encodeURIComponent(email)}`;
+        const url = `https://my-node-backend-gold.vercel.app//api/family/${encodeURIComponent(email)}`;
         const response = await axios.get(url);
 
         setFamilyAccountName(response.data.familyAccountName || '');
@@ -96,7 +96,7 @@ const DashboardFamily = () => {
       setNotifError(null);
 
       try {
-        const response = await axios.get(`http://localhost:5000/api/notifications/${encodeURIComponent(familyAccountName)}`);
+        const response = await axios.get(`https://my-node-backend-gold.vercel.app//api/notifications/${encodeURIComponent(familyAccountName)}`);
         setNotifications(response.data.notifications || []);
       } catch (error) {
         setNotifError('Failed to load notifications.');
@@ -120,7 +120,7 @@ const DashboardFamily = () => {
       setWarrantyError(null);
 
       try {
-        const response = await axios.get(`http://localhost:5000/api/entries/by-email/${encodeURIComponent(selectedMemberEmail)}`);
+        const response = await axios.get(`https://my-node-backend-gold.vercel.app//api/entries/by-email/${encodeURIComponent(selectedMemberEmail)}`);
         setWarrantyEntries(response.data.entries || []);
       } catch (error) {
         setWarrantyError('Failed to load warranty entries.');
@@ -210,7 +210,7 @@ const DashboardFamily = () => {
         familyAccountName,
         members: members.map(m => String(m).trim().toLowerCase())
       };
-      const res = await axios.post("http://localhost:5000/api/family/add-members", payload, { timeout: 5000 });
+      const res = await axios.post("https://my-node-backend-gold.vercel.app//api/family/add-members", payload, { timeout: 5000 });
 
       if (res.status === 201 || res.status === 200) {
         const newMembers = res.data || [];
@@ -304,7 +304,7 @@ const DashboardFamily = () => {
                       onClick={async () => {
                         if (window.confirm(`Delete member ${member.email}?`)) {
                           try {
-                            const res = await axios.delete('http://localhost:5000/api/family/delete-member', {
+                            const res = await axios.delete('https://my-node-backend-gold.vercel.app//api/family/delete-member', {
                               data: { familyAccountName, memberEmail: member.email }
                             });
                             if (res.status === 200) {

@@ -30,7 +30,7 @@ const DonateViaPlatform = () => {
   // Fetch previous donations for testimonials
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/donation-platform")
+      .get("https://my-node-backend-gold.vercel.app//api/donation-platform")
       .then((res) => setTestimonials(res.data))
       .catch((err) => console.error(err));
   }, []);
@@ -50,7 +50,7 @@ const DonateViaPlatform = () => {
     }
     try {
       await axios.post(
-        "http://localhost:5000/api/donation-platform/add",
+        "https://my-node-backend-gold.vercel.app//api/donation-platform/add",
         formData
       );
       alert("✅ Thank you for your donation. Volunteers will reach out soon.");

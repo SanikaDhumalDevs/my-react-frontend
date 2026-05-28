@@ -13,7 +13,7 @@ const ManageExpiringProducts = () => {
   useEffect(() => {
     if (email) {
       axios
-        .get(`http://localhost:5000/api/manage-expiring-products?email=${email}`)
+        .get(`https://my-node-backend-gold.vercel.app//api/manage-expiring-products?email=${email}`)
         .then(res => {
           setProducts(res.data.entries || []);
         })

@@ -30,7 +30,7 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const url = 'http://localhost:5000/api/auth/register';
+    const url = 'https://my-node-backend-gold.vercel.app//api/auth/register';
 
     if (!accountType) {
       alert('Please select an account type.');
@@ -52,7 +52,7 @@ function Register() {
       const familyName = formData.familyAccountName.trim();
 
       try {
-        const checkRes = await axios.post('http://localhost:5000/api/auth/check-family', {
+        const checkRes = await axios.post('https://my-node-backend-gold.vercel.app//api/auth/check-family', {
           familyAccountName: familyName
         });
 

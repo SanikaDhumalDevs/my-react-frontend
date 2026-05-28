@@ -18,7 +18,7 @@ const DonateByYourself = () => {
 
     try {
       // Make sure this matches your backend port (usually 5000 or 8080)
-      const response = await axios.post("http://localhost:5000/api/donate/nearby", { city, country });
+      const response = await axios.post("https://my-node-backend-gold.vercel.app//api/donate/nearby", { city, country });
       setResults(response.data);
     } catch (error) {
       console.error("Error fetching NGOs:", error);
