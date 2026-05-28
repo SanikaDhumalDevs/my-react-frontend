@@ -97,7 +97,7 @@ const Dashboard = () => {
 
     const fetchEntries = async () => {
       try {
-        const response = await axios.get(`https://my-node-backend-gold.vercel.app//api/dashboard?email=${userEmail}`);
+        const response = await axios.get(`https://my-node-backend-gold.vercel.app/api/dashboard?email=${userEmail}`);
         const allEntries = response.data.entries || [];
         setEntries(allEntries);
         
@@ -182,7 +182,7 @@ const Dashboard = () => {
           lastSentDate !== todayDateString &&
           expiringItems.length > 0
         ) {
-          await axios.post("https://my-node-backend-gold.vercel.app//api/notify-expiry", {
+          await axios.post("https://my-node-backend-gold.vercel.app/api/notify-expiry", {
             to: userEmail,
           });
           localStorage.setItem("lastEmailSentDate", todayDateString);
@@ -350,7 +350,7 @@ const Dashboard = () => {
 
     try {
       const delRes = await axios.post(
-        `https://my-node-backend-gold.vercel.app//api/entries/delete-expired`,
+        `https://my-node-backend-gold.vercel.app/api/entries/delete-expired`,
         { email: userEmail }
       );
 
@@ -364,7 +364,7 @@ const Dashboard = () => {
 
         try {
           const refreshed = await axios.get(
-            `https://my-node-backend-gold.vercel.app//api/dashboard?email=${encodeURIComponent(userEmail)}`
+            `https://my-node-backend-gold.vercel.app/api/dashboard?email=${encodeURIComponent(userEmail)}`
           );
           setEntries(refreshed.data.entries || []);
         } catch (fetchErr) {

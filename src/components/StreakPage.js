@@ -22,7 +22,7 @@ const StreakPage = () => {
     const fetchStreak = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`https://my-node-backend-gold.vercel.app//api/streak/${email}`);
+        const res = await axios.get(`https://my-node-backend-gold.vercel.app/api/streak/${email}`);
         setStreakData(res.data);
         setError(null);
       } catch (err) {
@@ -39,10 +39,10 @@ const StreakPage = () => {
   const resetStreak = async () => {
     try {
       // send email in the request body (not as URL param)
-      await axios.post("https://my-node-backend-gold.vercel.app//api/streak/reset", { email });
+      await axios.post("https://my-node-backend-gold.vercel.app/api/streak/reset", { email });
       
       // fetch the updated streak after reset
-      const res = await axios.get(`https://my-node-backend-gold.vercel.app//api/streak/${email}`);
+      const res = await axios.get(`https://my-node-backend-gold.vercel.app/api/streak/${email}`);
       setStreakData(res.data);
     } catch (err) {
       console.error('Error resetting streak:', err);

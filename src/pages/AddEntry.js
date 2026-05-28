@@ -54,7 +54,7 @@ const AddEntry = () => {
           unit: formData.unit,
         }).toString();
 
-        const response = await fetch(`https://my-node-backend-gold.vercel.app//api/emission-factor/calculate?${queryParams}`);
+        const response = await fetch(`https://my-node-backend-gold.vercel.app/api/emission-factor/calculate?${queryParams}`);
         const data = await response.json();
 
         if (response.ok && data?.totalEmission !== undefined) {
@@ -146,7 +146,7 @@ const AddEntry = () => {
     }
 
     try {
-      const response = await fetch('https://my-node-backend-gold.vercel.app//api/entries/add', {
+      const response = await fetch('https://my-node-backend-gold.vercel.app/api/entries/add', {
         method: 'POST',
         body: form,
       });
