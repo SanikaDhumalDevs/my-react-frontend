@@ -62,6 +62,7 @@ const DonateByYourself = () => {
   };
 
   // Live-query real NGOs, Food Banks, and Charities from the OpenStreetMap GIS Database
+  // Live-query real NGOs, Food Banks, and Charities from the OpenStreetMap GIS Database
   const handleFetchNGOs = async () => {
     if (!city || !country) {
       alert("Please enter both city and country");
@@ -72,22 +73,40 @@ const DonateByYourself = () => {
     setAiAnalysis(null);
 
     try {
-      // Live query targeting NGOs, charities, and food banks specifically
-      const searchQuery = `ngo charity food bank in ${city} ${country}`;
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=8`
+      // 1. First, try searching for Food Banks/Food Charities (highly relevant to food donation)
+      const primaryQuery = `food bank ${city}`;
+      let response = await axios.get(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(primaryQuery)}&format=json&limit=8`
       );
+
+      // 2. Fallback: If no specific "food bank" is registered, search for "charity trust" or "ngo" in that city
+      if (!response.data || response.data.length === 0) {
+        const fallbackQuery = `charity trust ${city}`;
+        response = await axios.get(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fallbackQuery)}&format=json&limit=8`
+        );
+      }
+
+      // 3. Second Fallback: If still nothing, search for general "welfare" or "ngo"
+      if (!response.data || response.data.length === 0) {
+        const absoluteFallbackQuery = `ngo ${city}`;
+        response = await axios.get(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(absoluteFallbackQuery)}&format=json&limit=8`
+        );
+      }
 
       if (response.data && response.data.length > 0) {
         // Map the real-world locations to our clean card format
         const mappedCenters = response.data.map((item) => {
           const displayNameParts = item.display_name.split(",");
           const name = displayNameParts[0].trim();
-          const address = displayNameParts.slice(1, 4).join(",").trim(); // Clean up the address string
+          
+          // Clean up the address string (take city/state details and discard long metadata)
+          const address = displayNameParts.slice(1, 4).join(",").trim(); 
           
           return {
             name: name,
-            address: address || `Registered charity in ${city}`,
+            address: address || `Registered community trust in ${city}`,
             latitude: parseFloat(item.lat),
             longitude: parseFloat(item.lon),
           };
@@ -99,35 +118,15 @@ const DonateByYourself = () => {
           donationCenters: mappedCenters,
         });
       } else {
-        // Fallback: If no specific search is found, query general social facilities to ensure results always populate
-        const fallbackRes = await axios.get(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`charity in ${city}`)}&format=json&limit=6`
-        );
-        
-        if (fallbackRes.data && fallbackRes.data.length > 0) {
-          const mappedCenters = fallbackRes.data.map((item) => ({
-            name: item.display_name.split(",")[0].trim(),
-            address: item.display_name.split(",").slice(1, 4).join(",").trim(),
-            latitude: parseFloat(item.lat),
-            longitude: parseFloat(item.lon),
-          }));
-
-          setResults({
-            city,
-            country,
-            donationCenters: mappedCenters,
-          });
-        } else {
-          setResults({
-            city,
-            country,
-            donationCenters: [],
-          });
-        }
+        setResults({
+          city,
+          country,
+          donationCenters: [],
+        });
       }
     } catch (error) {
       console.error("Error fetching live GIS locations:", error);
-      alert("Failed to connect to the GIS database. Please check your network.");
+      alert("Failed to connect to the GIS database. Please check your network connection.");
     } finally {
       setLoading(false);
     }
