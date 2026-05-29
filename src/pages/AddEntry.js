@@ -230,7 +230,37 @@ const AddEntry = () => {
     try {
       let successCount = 0;
 
-      for (const item of itemsToSubmit) {
+      for (let i = 0; i < itemsToSubmit.length; i++) {
+        const item = itemsToSubmit[i];
+
+        // DYNAMIC SILENT EXPIRY PREDICTION (ONLY IF BLANK ON SUBMISSION)
+        let finalExpiryDate = item.expiryDate || formData.expiryDate || '';
+
+        if ((activeTab === 'food' || activeTab === 'medicine') && !finalExpiryDate) {
+          try {
+            setMessage(`Predicting expiration for "${item.name}"...`);
+            const predictRes = await fetch("http://localhost:5001/predict-expiry", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: item.name,
+                quantity: item.quantity,
+                unit: item.unit || formData.unit,
+                city: formData.city,
+                country: formData.country,
+                email: formData.email,
+                purchaseDate: item.purchaseDate || formData.purchaseDate || getTodayDateString()
+              })
+            });
+            const predictData = await predictRes.json();
+            if (predictRes.ok && predictData?.expiryDate) {
+              finalExpiryDate = predictData.expiryDate;
+            }
+          } catch (err) {
+            console.error("Silent expiry prediction failed, using fallback:", err);
+          }
+        }
+
         const form = new FormData();
         form.append('email', formData.email);
         form.append('itemName', item.name); 
@@ -242,12 +272,15 @@ const AddEntry = () => {
         form.append('unit', item.unit || formData.unit);
         form.append('totalEmission', parseFloat(item.totalEmission) || 0); 
 
-        if (formData.bill) form.append('bill', formData.bill);
+        // Attach the bill image only to the first item of batch scans to save Vercel payload space
+        if (formData.bill && i === 0) {
+          form.append('bill', formData.bill);
+        }
 
         if (activeTab === 'product') {
           form.append('warrantyPeriod', item.warrantyPeriod !== undefined && item.warrantyPeriod !== null ? item.warrantyPeriod : (formData.warrantyPeriod || ''));
         } else {
-          form.append('expiryDate', item.expiryDate || formData.expiryDate || '');
+          form.append('expiryDate', finalExpiryDate);
         }
 
         const response = await fetch('https://my-node-backend-gold.vercel.app/api/entries/add', {
