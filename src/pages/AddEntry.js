@@ -151,9 +151,10 @@ const AddEntry = () => {
   };
 
   // Handles bulk submit for multiple items, or normal single submit
+  // Handles bulk submit for multiple items, or normal single submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("Submitting entries...");
+    setMessage("Submitting entries to Vault...");
 
     const itemsToSubmit = ocrQueue.length > 0 
       ? ocrQueue.filter(item => item.checked)
@@ -168,8 +169,10 @@ const AddEntry = () => {
       let successCount = 0;
 
       // Loop and submit each item sequentially
-      for (const item of itemsToSubmit) {
+      for (let i = 0; i < itemsToSubmit.length; i++) {
+        const item = itemsToSubmit[i];
         const form = new FormData();
+        
         form.append('email', formData.email);
         form.append('itemName', item.name || item.itemName); 
         form.append('city', formData.city);
@@ -180,7 +183,11 @@ const AddEntry = () => {
         form.append('unit', item.unit || formData.unit);
         form.append('totalEmission', parseFloat(item.totalEmission) || 0); 
 
-        if (formData.bill) form.append('bill', formData.bill);
+        // CRITICAL OPTIMIZATION: Only upload the heavy bill file for the first item in the list.
+        // This prevents overloading Vercel with multiple concurrent image uploads.
+        if (formData.bill && i === 0) {
+          form.append('bill', formData.bill);
+        }
 
         if (activeTab === 'product') {
           form.append('warrantyPeriod', item.warrantyPeriod || formData.warrantyPeriod || '');
@@ -193,14 +200,16 @@ const AddEntry = () => {
           body: form,
         });
 
-        if (response.ok) successCount++;
+        if (response.ok) {
+          successCount++;
+        }
       }
 
       if (successCount === itemsToSubmit.length) {
         setMessage(`Success! Saved ${successCount} entries to your Vault.`);
         setOcrQueue([]); // Clear queue on success
       } else {
-        setMessage(`Saved ${successCount} out of ${itemsToSubmit.length} entries.`);
+        setMessage(`Saved ${successCount} out of ${itemsToSubmit.length} entries. Some database connections may have timed out.`);
       }
     } catch (error) {
       console.error(error);
