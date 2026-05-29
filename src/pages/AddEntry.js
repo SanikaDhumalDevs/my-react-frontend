@@ -42,7 +42,7 @@ const AddEntry = () => {
     }
   };
 
-  // Auto-fetch emission factor
+  // Auto-fetch emission factor// Auto-fetch emission factor with Gemini fallback
   useEffect(() => {
     const fetchEmissionFactor = async () => {
       if (!formData.name || !formData.quantity || !formData.unit) return;
@@ -54,19 +54,52 @@ const AddEntry = () => {
           unit: formData.unit,
         }).toString();
 
+        // 1. Attempt to fetch from the main Vercel database backend
         const response = await fetch(`https://my-node-backend-gold.vercel.app/api/emission-factor/calculate?${queryParams}`);
         const data = await response.json();
 
+        if (response.ok && data?.totalEmission !== undefined && data.totalEmission !== null) {
+          setFormData((prev) => ({
+            ...prev,
+            totalEmission: Number(data.totalEmission).toFixed(2),
+          }));
+        } else {
+          // Fallback if item is not found in database or API returns error
+          console.warn("Item not in database. Querying Gemini fallback...");
+          await fetchGeminiEmission();
+        }
+      } catch (err) {
+        console.error("Database fetch error, querying Gemini fallback...", err);
+        await fetchGeminiEmission();
+      }
+    };
+
+    // Helper function to call the Python Flask API to calculate via Gemini
+    const fetchGeminiEmission = async () => {
+      try {
+        const response = await fetch("http://localhost:5001/calculate-emission", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            quantity: formData.quantity,
+            unit: formData.unit,
+          }),
+        });
+
+        const data = await response.json();
         if (response.ok && data?.totalEmission !== undefined) {
           setFormData((prev) => ({
             ...prev,
-            totalEmission: data.totalEmission.toFixed(2),
+            totalEmission: Number(data.totalEmission).toFixed(2),
           }));
         } else {
           setFormData((prev) => ({ ...prev, totalEmission: '' }));
         }
       } catch (err) {
-        console.error("Emission factor fetch error:", err);
+        console.error("Failed to estimate emission with Gemini:", err);
         setFormData((prev) => ({ ...prev, totalEmission: '' }));
       }
     };
