@@ -234,7 +234,9 @@ const parseSpokenDate = (str) => {
       if (!str) return null;
       
       let cleaned = str.toLowerCase()
-        .replace(/,/g, '') // Strips commas so day numbers don't fail parsing
+        .replace(/-/g, ' ')   // 1. Replace all dashes with spaces so "2020-6" becomes "2020 6"
+        .replace(/,/g, '')    // 2. Strip commas
+        .replace(/\./g, '')   // 3. Strip periods
         .replace(/(\d+)(st|nd|rd|th)/g, '$1') 
         .replace(/\bof\b/g, '')
         .trim();
@@ -262,7 +264,7 @@ const parseSpokenDate = (str) => {
         .replace(/two\s+thousand\s+twenty\s+one/g, '2021')
         .replace(/two\s+thousand\s+twenty/g, '2020');
 
-      // Fallback to merge digits split by a space: "2020 6" -> "2026"
+      // Merge spaces split by a space: "2020 6" -> "2026"
       cleaned = cleaned.replace(/2020\s+(\d)/g, '202$1');
 
       const isoMatch = cleaned.match(/(\d{4})[-\s](\d{1,2})[-\s](\d{1,2})/);
@@ -277,10 +279,20 @@ const parseSpokenDate = (str) => {
         return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
       }
 
+      // Expanded to support short month abbreviations
       const monthsMap = {
-        january: '01', february: '02', march: '03', april: '04',
-        may: '05', june: '06', july: '07', august: '08',
-        september: '09', october: '10', november: '11', december: '12'
+        january: '01', jan: '01',
+        february: '02', feb: '02',
+        march: '03', mar: '03',
+        april: '04', apr: '04',
+        may: '05',
+        june: '06', jun: '06',
+        july: '07', jul: '07',
+        august: '08', aug: '08',
+        september: '09', sep: '09', sept: '09',
+        october: '10', oct: '10',
+        november: '11', nov: '11',
+        december: '12', dec: '12'
       };
 
       const words = cleaned.split(/\s+/);
