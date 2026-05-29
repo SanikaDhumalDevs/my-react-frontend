@@ -2,11 +2,20 @@ import React, { useState, useEffect } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
 const AddEntry = () => {
+  // Helper to get today's date in YYYY-MM-DD format
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [activeTab, setActiveTab] = useState('product');
   const [formData, setFormData] = useState({
     email: localStorage.getItem('email') || '',
     name: '',
-    purchaseDate: '',
+    purchaseDate: getTodayDateString(), // 1. Default to today's date to count for this month
     warrantyPeriod: '',
     expiryDate: '',
     bill: null,
@@ -42,7 +51,7 @@ const AddEntry = () => {
     }
   };
 
-  // Auto-fetch emission factor// Auto-fetch emission factor with Gemini fallback
+  // Auto-fetch emission factor with Gemini fallback
   useEffect(() => {
     const fetchEmissionFactor = async () => {
       if (!formData.name || !formData.quantity || !formData.unit) return;
@@ -112,7 +121,6 @@ const AddEntry = () => {
   }, [formData.name, formData.quantity, formData.unit]);
 
   // OCR Upload to Python port 5001
- // OCR Upload to Python port 5001
   const runOCR = async (file) => {
     setOcrLoading(true);
     setMessage('');
@@ -129,7 +137,6 @@ const AddEntry = () => {
       const data = await response.json();
       
       if (response.ok && data) {
-        // Log structured data for developer reference
         console.log("Structured AI OCR Result:", data);
         setOcrText(JSON.stringify(data, null, 2));
 
@@ -137,7 +144,7 @@ const AddEntry = () => {
         setFormData((prev) => ({
           ...prev,
           name: data.name || prev.name,
-          purchaseDate: data.purchaseDate || prev.purchaseDate,
+          purchaseDate: data.purchaseDate || prev.purchaseDate || getTodayDateString(),
           quantity: data.quantity !== undefined ? data.quantity : prev.quantity,
           unit: data.unit || prev.unit,
           warrantyPeriod: data.warrantyPeriod !== null ? data.warrantyPeriod : prev.warrantyPeriod,
@@ -146,7 +153,6 @@ const AddEntry = () => {
 
         setMessage("AI Bill Scanning complete!");
       } else {
-        // Display the exact error returned by Flask
         setMessage(data.error || "Could not extract details from the image.");
       }
     } catch (error) {
@@ -164,7 +170,10 @@ const AddEntry = () => {
     form.append('itemName', formData.name); 
     form.append('city', formData.city);
     form.append('country', formData.country);
-    form.append('purchaseDate', formData.purchaseDate || '');
+    
+    // 2. Fallback to today's date if purchaseDate is missing, ensuring monthly aggregation works
+    form.append('purchaseDate', formData.purchaseDate || getTodayDateString());
+    
     form.append('category', activeTab); 
     form.append('quantity', parseFloat(formData.quantity)); 
     form.append('unit', formData.unit);
