@@ -230,13 +230,26 @@ const AddEntry = () => {
       six: 6, seven: 7, eight: 8, nine: 9, ten: 10
     };
 
-    const parseSpokenDate = (str) => {
+const parseSpokenDate = (str) => {
       if (!str) return null;
       
       let cleaned = str.toLowerCase()
         .replace(/(\d+)(st|nd|rd|th)/g, '$1') 
         .replace(/\bof\b/g, '')
         .trim();
+
+      // Fix "2020 6" -> "2026"
+      cleaned = cleaned.replace(/2020\s+(\d)/g, '202$1');
+
+      // Fix "2020 six" -> "2026"
+      const yearWords = {
+        one: '1', two: '2', three: '3', four: '4', five: '5',
+        six: '6', seven: '7', eight: '8', nine: '9'
+      };
+      Object.keys(yearWords).forEach((word) => {
+        const regex = new RegExp(`2020\\s+${word}`, 'g');
+        cleaned = cleaned.replace(regex, `202${yearWords[word]}`);
+      });
 
       const isoMatch = cleaned.match(/(\d{4})[-\s](\d{1,2})[-\s](\d{1,2})/);
       if (isoMatch) {
