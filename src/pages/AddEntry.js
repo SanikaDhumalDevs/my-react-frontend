@@ -234,22 +234,36 @@ const parseSpokenDate = (str) => {
       if (!str) return null;
       
       let cleaned = str.toLowerCase()
+        .replace(/,/g, '') // Strips commas so day numbers don't fail parsing
         .replace(/(\d+)(st|nd|rd|th)/g, '$1') 
         .replace(/\bof\b/g, '')
         .trim();
 
-      // Fix "2020 6" -> "2026"
-      cleaned = cleaned.replace(/2020\s+(\d)/g, '202$1');
+      // Convert verbal years directly to digits
+      cleaned = cleaned
+        .replace(/twenty\s+twenty\s+six/g, '2026')
+        .replace(/twenty\s+twenty\s+seven/g, '2027')
+        .replace(/twenty\s+twenty\s+eight/g, '2028')
+        .replace(/twenty\s+twenty\s+nine/g, '2029')
+        .replace(/twenty\s+twenty\s+five/g, '2025')
+        .replace(/twenty\s+twenty\s+four/g, '2024')
+        .replace(/twenty\s+twenty\s+three/g, '2023')
+        .replace(/twenty\s+twenty\s+two/g, '2022')
+        .replace(/twenty\s+twenty\s+one/g, '2021')
+        .replace(/twenty\s+twenty/g, '2020')
+        .replace(/two\s+thousand\s+twenty\s+six/g, '2026')
+        .replace(/two\s+thousand\s+twenty\s+seven/g, '2027')
+        .replace(/two\s+thousand\s+twenty\s+eight/g, '2028')
+        .replace(/two\s+thousand\s+twenty\s+nine/g, '2029')
+        .replace(/two\s+thousand\s+twenty\s+five/g, '2025')
+        .replace(/two\s+thousand\s+twenty\s+four/g, '2024')
+        .replace(/two\s+thousand\s+twenty\s+three/g, '2023')
+        .replace(/two\s+thousand\s+twenty\s+two/g, '2022')
+        .replace(/two\s+thousand\s+twenty\s+one/g, '2021')
+        .replace(/two\s+thousand\s+twenty/g, '2020');
 
-      // Fix "2020 six" -> "2026"
-      const yearWords = {
-        one: '1', two: '2', three: '3', four: '4', five: '5',
-        six: '6', seven: '7', eight: '8', nine: '9'
-      };
-      Object.keys(yearWords).forEach((word) => {
-        const regex = new RegExp(`2020\\s+${word}`, 'g');
-        cleaned = cleaned.replace(regex, `202${yearWords[word]}`);
-      });
+      // Fallback to merge digits split by a space: "2020 6" -> "2026"
+      cleaned = cleaned.replace(/2020\s+(\d)/g, '202$1');
 
       const isoMatch = cleaned.match(/(\d{4})[-\s](\d{1,2})[-\s](\d{1,2})/);
       if (isoMatch) {
