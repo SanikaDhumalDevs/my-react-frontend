@@ -121,6 +121,33 @@ const AddEntry = () => {
     return () => clearTimeout(timeoutId);
   }, [formData.name, formData.quantity, formData.unit]);
 
+  // Helper to calculate emission factor (Checks database first, falls back to Gemini)
+  const getEmissionValue = async (name, qty, unit) => {
+    try {
+      const queryParams = new URLSearchParams({ itemName: name, quantity: qty, unit }).toString();
+      const response = await fetch(`https://my-node-backend-gold.vercel.app/api/emission-factor/calculate?${queryParams}`);
+      const data = await response.json();
+      if (response.ok && data?.totalEmission !== undefined) {
+        return data.totalEmission;
+      }
+    } catch (err) {
+      console.warn("Db lookup failed, trying fallback emission factor...");
+    }
+    try {
+      const response = await fetch("http://localhost:5001/calculate-emission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, quantity: qty, unit })
+      });
+      const data = await response.json();
+      if (response.ok && data?.totalEmission !== undefined) {
+        return data.totalEmission;
+      }
+    } catch (err) {
+      console.error("Fallback emission factor failed:", err);
+    }
+    return 0;
+  };
   // OCR Upload to Python port 5001
   // OCR Upload to Python port 5001
   const runOCR = async (file) => {
@@ -138,29 +165,41 @@ const AddEntry = () => {
 
       const data = await response.json();
       
-      if (response.ok && data) {
+     if (response.ok && data) {
         console.log("Structured AI OCR Result:", data);
         setOcrText(JSON.stringify(data, null, 2));
 
-        // Normalize data response to always represent an array
         const itemsArray = Array.isArray(data) ? data : [data];
-        setScannedItems(itemsArray);
+        setMessage("Calculating carbon footprint for all scanned items...");
 
-        if (itemsArray.length > 0) {
-          const firstItem = itemsArray[0];
-          // Update visual form with the first detected item
+        // Automatically calculate emissions for all items right now
+        const processedItems = [];
+        for (const item of itemsArray) {
+          const emission = await getEmissionValue(item.name, item.quantity, item.unit);
+          processedItems.push({
+            ...item,
+            totalEmission: emission
+          });
+        }
+
+        setScannedItems(processedItems);
+
+        if (processedItems.length > 0) {
+          const firstItem = processedItems[0];
+          // Populate the form fields completely (including visual emission)
           setFormData((prev) => ({
             ...prev,
             name: firstItem.name || prev.name,
             purchaseDate: firstItem.purchaseDate || prev.purchaseDate || getTodayDateString(),
             quantity: firstItem.quantity !== undefined ? firstItem.quantity : prev.quantity,
             unit: firstItem.unit || prev.unit,
+            totalEmission: Number(firstItem.totalEmission).toFixed(2),
             warrantyPeriod: firstItem.warrantyPeriod !== null ? firstItem.warrantyPeriod : prev.warrantyPeriod,
             expiryDate: firstItem.expiryDate || prev.expiryDate,
           }));
         }
 
-        setMessage(`AI Bill Scanning complete! Detected ${itemsArray.length} item(s).`);
+        setMessage(`AI Bill Scanning and footprint calculations complete! Detected ${processedItems.length} item(s).`);
       } else {
         setMessage(data.error || "Could not extract details from the image.");
       }
@@ -199,16 +238,16 @@ const AddEntry = () => {
     return 0;
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('Submitting entries...');
 
-    // If multi-items from scan are present, use those. Otherwise, submit manual form data.
     const itemsToSubmit = scannedItems.length > 0 ? scannedItems : [{
       name: formData.name,
       quantity: formData.quantity,
       unit: formData.unit,
       purchaseDate: formData.purchaseDate,
+      totalEmission: formData.totalEmission || 0,
       warrantyPeriod: formData.warrantyPeriod,
       expiryDate: formData.expiryDate
     }];
@@ -217,14 +256,6 @@ const AddEntry = () => {
       let successCount = 0;
 
       for (const item of itemsToSubmit) {
-        // Resolve emission factor for this item
-        let emission = 0;
-        if (scannedItems.length > 0) {
-          emission = await getEmissionValue(item.name, item.quantity, item.unit);
-        } else {
-          emission = parseFloat(formData.totalEmission) || 0;
-        }
-
         const form = new FormData();
         form.append('email', formData.email);
         form.append('itemName', item.name); 
@@ -234,7 +265,7 @@ const AddEntry = () => {
         form.append('category', activeTab); 
         form.append('quantity', parseFloat(item.quantity)); 
         form.append('unit', item.unit || formData.unit);
-        form.append('totalEmission', parseFloat(emission)); 
+        form.append('totalEmission', parseFloat(item.totalEmission) || 0); 
 
         if (formData.bill) form.append('bill', formData.bill);
 
