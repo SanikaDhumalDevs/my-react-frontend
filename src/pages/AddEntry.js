@@ -211,32 +211,7 @@ const AddEntry = () => {
     }
   };
   // Helper to dynamically calculate emissions for multi-item sequences
-  const getEmissionValue = async (name, qty, unit) => {
-    try {
-      const queryParams = new URLSearchParams({ itemName: name, quantity: qty, unit }).toString();
-      const response = await fetch(`https://my-node-backend-gold.vercel.app/api/emission-factor/calculate?${queryParams}`);
-      const data = await response.json();
-      if (response.ok && data?.totalEmission !== undefined) {
-        return data.totalEmission;
-      }
-    } catch (err) {
-      console.warn("Db lookup failed, trying fallback emission factor...");
-    }
-    try {
-      const response = await fetch("http://localhost:5001/calculate-emission", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, quantity: qty, unit })
-      });
-      const data = await response.json();
-      if (response.ok && data?.totalEmission !== undefined) {
-        return data.totalEmission;
-      }
-    } catch (err) {
-      console.error("Fallback emission factor failed:", err);
-    }
-    return 0;
-  };
+  
 
  const handleSubmit = async (e) => {
     e.preventDefault();
