@@ -78,6 +78,7 @@ const AddEntry = () => {
   }, [formData.name, formData.quantity, formData.unit]);
 
   // Run OCR upload targeting Flask Python server
+  // Run OCR upload targeting Flask Python server
   const runOCR = async (file) => {
     setOcrLoading(true);
     setMessage('');
@@ -93,18 +94,21 @@ const AddEntry = () => {
 
       const data = await response.json();
       
-      if (response.ok && Array.isArray(data)) {
-        console.log("Structured AI OCR Array Result:", data);
+      if (response.ok && data) {
+        // SMART NORMALIZATION: If Python returns a single object, we automatically wrap it in an array [data]
+        const normalizedData = Array.isArray(data) ? data : [data];
+
+        console.log("Structured AI OCR Normalized Result:", normalizedData);
         
         // Add checked status to all items so user can select/deselect
-        const itemsWithSelection = data.map((item) => ({
+        const itemsWithSelection = normalizedData.map((item) => ({
           ...item,
           checked: true,
           totalEmission: "" // Will calculate emission per item dynamically
         }));
 
         setOcrQueue(itemsWithSelection);
-        setMessage(`AI Bill Scanning complete! Detected ${data.length} items.`);
+        setMessage(`AI Bill Scanning complete! Detected ${normalizedData.length} item(s).`);
 
         // Trigger emission calculation for each item in the queue
         calculateQueueEmissions(itemsWithSelection);
@@ -119,7 +123,6 @@ const AddEntry = () => {
       setOcrLoading(false);
     }
   };
-
   // Helper: Calculates emission factors for all items detected in the bill
   const calculateQueueEmissions = async (items) => {
     const updatedQueue = [...items];
