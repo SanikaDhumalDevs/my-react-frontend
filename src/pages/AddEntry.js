@@ -29,6 +29,7 @@ const AddEntry = () => {
   const [message, setMessage] = useState('');
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrText, setOcrText] = useState('');
+  const [scannedItems, setScannedItems] = useState([]); // Holds multi-item scan arrays
 
   const {
     transcript,
@@ -121,6 +122,7 @@ const AddEntry = () => {
   }, [formData.name, formData.quantity, formData.unit]);
 
   // OCR Upload to Python port 5001
+  // OCR Upload to Python port 5001
   const runOCR = async (file) => {
     setOcrLoading(true);
     setMessage('');
@@ -140,18 +142,25 @@ const AddEntry = () => {
         console.log("Structured AI OCR Result:", data);
         setOcrText(JSON.stringify(data, null, 2));
 
-        // Directly update React form state with AI parsed fields
-        setFormData((prev) => ({
-          ...prev,
-          name: data.name || prev.name,
-          purchaseDate: data.purchaseDate || prev.purchaseDate || getTodayDateString(),
-          quantity: data.quantity !== undefined ? data.quantity : prev.quantity,
-          unit: data.unit || prev.unit,
-          warrantyPeriod: data.warrantyPeriod !== null ? data.warrantyPeriod : prev.warrantyPeriod,
-          expiryDate: data.expiryDate || prev.expiryDate,
-        }));
+        // Normalize data response to always represent an array
+        const itemsArray = Array.isArray(data) ? data : [data];
+        setScannedItems(itemsArray);
 
-        setMessage("AI Bill Scanning complete!");
+        if (itemsArray.length > 0) {
+          const firstItem = itemsArray[0];
+          // Update visual form with the first detected item
+          setFormData((prev) => ({
+            ...prev,
+            name: firstItem.name || prev.name,
+            purchaseDate: firstItem.purchaseDate || prev.purchaseDate || getTodayDateString(),
+            quantity: firstItem.quantity !== undefined ? firstItem.quantity : prev.quantity,
+            unit: firstItem.unit || prev.unit,
+            warrantyPeriod: firstItem.warrantyPeriod !== null ? firstItem.warrantyPeriod : prev.warrantyPeriod,
+            expiryDate: firstItem.expiryDate || prev.expiryDate,
+          }));
+        }
+
+        setMessage(`AI Bill Scanning complete! Detected ${itemsArray.length} item(s).`);
       } else {
         setMessage(data.error || "Could not extract details from the image.");
       }
@@ -162,49 +171,100 @@ const AddEntry = () => {
       setOcrLoading(false);
     }
   };
+  // Helper to dynamically calculate emissions for multi-item sequences
+  const getEmissionValue = async (name, qty, unit) => {
+    try {
+      const queryParams = new URLSearchParams({ itemName: name, quantity: qty, unit }).toString();
+      const response = await fetch(`https://my-node-backend-gold.vercel.app/api/emission-factor/calculate?${queryParams}`);
+      const data = await response.json();
+      if (response.ok && data?.totalEmission !== undefined) {
+        return data.totalEmission;
+      }
+    } catch (err) {
+      console.warn("Db lookup failed, trying fallback emission factor...");
+    }
+    try {
+      const response = await fetch("http://localhost:5001/calculate-emission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, quantity: qty, unit })
+      });
+      const data = await response.json();
+      if (response.ok && data?.totalEmission !== undefined) {
+        return data.totalEmission;
+      }
+    } catch (err) {
+      console.error("Fallback emission factor failed:", err);
+    }
+    return 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const form = new FormData();
-    form.append('email', formData.email);
-    form.append('itemName', formData.name); 
-    form.append('city', formData.city);
-    form.append('country', formData.country);
-    
-    // 2. Fallback to today's date if purchaseDate is missing, ensuring monthly aggregation works
-    form.append('purchaseDate', formData.purchaseDate || getTodayDateString());
-    
-    form.append('category', activeTab); 
-    form.append('quantity', parseFloat(formData.quantity)); 
-    form.append('unit', formData.unit);
-    form.append('totalEmission', parseFloat(formData.totalEmission) || 0); 
+    setMessage('Submitting entries...');
 
-    if (formData.bill) form.append('bill', formData.bill);
-
-    if (activeTab === 'product') {
-      form.append('warrantyPeriod', formData.warrantyPeriod || '');
-    } else {
-      form.append('expiryDate', formData.expiryDate || '');
-    }
+    // If multi-items from scan are present, use those. Otherwise, submit manual form data.
+    const itemsToSubmit = scannedItems.length > 0 ? scannedItems : [{
+      name: formData.name,
+      quantity: formData.quantity,
+      unit: formData.unit,
+      purchaseDate: formData.purchaseDate,
+      warrantyPeriod: formData.warrantyPeriod,
+      expiryDate: formData.expiryDate
+    }];
 
     try {
-      const response = await fetch('https://my-node-backend-gold.vercel.app/api/entries/add', {
-        method: 'POST',
-        body: form,
-      });
+      let successCount = 0;
 
-      const result = await response.json();
-      if (response.ok) {
-        setMessage('Entry submitted successfully!');
+      for (const item of itemsToSubmit) {
+        // Resolve emission factor for this item
+        let emission = 0;
+        if (scannedItems.length > 0) {
+          emission = await getEmissionValue(item.name, item.quantity, item.unit);
+        } else {
+          emission = parseFloat(formData.totalEmission) || 0;
+        }
+
+        const form = new FormData();
+        form.append('email', formData.email);
+        form.append('itemName', item.name); 
+        form.append('city', formData.city);
+        form.append('country', formData.country);
+        form.append('purchaseDate', item.purchaseDate || formData.purchaseDate || getTodayDateString());
+        form.append('category', activeTab); 
+        form.append('quantity', parseFloat(item.quantity)); 
+        form.append('unit', item.unit || formData.unit);
+        form.append('totalEmission', parseFloat(emission)); 
+
+        if (formData.bill) form.append('bill', formData.bill);
+
+        if (activeTab === 'product') {
+          form.append('warrantyPeriod', item.warrantyPeriod !== undefined && item.warrantyPeriod !== null ? item.warrantyPeriod : (formData.warrantyPeriod || ''));
+        } else {
+          form.append('expiryDate', item.expiryDate || formData.expiryDate || '');
+        }
+
+        const response = await fetch('https://my-node-backend-gold.vercel.app/api/entries/add', {
+          method: 'POST',
+          body: form,
+        });
+
+        if (response.ok) {
+          successCount++;
+        }
+      }
+
+      if (successCount === itemsToSubmit.length) {
+        setMessage(`${successCount} item(s) submitted successfully!`);
+        setScannedItems([]); // Clear scanned list on success
       } else {
-        setMessage(result.message || 'Submission failed. Please try again.');
+        setMessage(`Submitted ${successCount} out of ${itemsToSubmit.length} items successfully.`);
       }
     } catch (error) {
       console.error("Submission Error:", error);
       setMessage('Network error. Please try again.');
     }
   };
-
   const toggleListening = () => {
     if (isListening) {
       SpeechRecognition.stopListening();
@@ -660,3 +720,6 @@ const parseSpokenDate = (str) => {
 };
 
 export default AddEntry;
+
+
+
