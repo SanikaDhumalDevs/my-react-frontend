@@ -375,12 +375,28 @@ const parseSpokenDate = (str) => {
       }
 
       // 4. Unit Parse
+     // 4. Unit Parse
       const unitVal = extractValue(spokenText, 'unit is', controlKeywords) || 
                       extractValue(spokenText, 'unit', controlKeywords);
       if (unitVal) {
-        const validUnits = ['kg', 'liter', 'packet', 'piece', 'tablet'];
-        if (validUnits.includes(unitVal)) {
-          updatedForm.unit = unitVal;
+        const unitMapping = {
+          // kg mapping
+          kg: 'kg', kilogram: 'kg', kilograms: 'kg', kilo: 'kg', kilos: 'kg',
+          // liter mapping
+          liter: 'liter', liters: 'liter', litre: 'liter', litres: 'liter', ml: 'liter',
+          // packet mapping
+          packet: 'packet', packets: 'packet', pack: 'packet', packs: 'packet',
+          // piece mapping
+          piece: 'piece', pieces: 'piece', pcs: 'piece', pc: 'piece',
+          // tablet mapping
+          tablet: 'tablet', tablets: 'tablet', tab: 'tablet', tabs: 'tablet', pill: 'tablet', pills: 'tablet'
+        };
+
+        const cleanedUnit = unitVal.toLowerCase().replace(/[,.]/g, '').trim();
+        const matchedUnit = unitMapping[cleanedUnit];
+        
+        if (matchedUnit) {
+          updatedForm.unit = matchedUnit;
         }
       }
 
