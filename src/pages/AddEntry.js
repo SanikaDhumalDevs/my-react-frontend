@@ -19,7 +19,6 @@ const AddEntry = () => {
     name: '',
     purchaseDate: getTodayDateString(), // 1. Default to today's date to count for this month
     warrantyPeriod: '',
-    warrantyPdf: null,
     expiryDate: '',
     bill: null,
     city: '',
@@ -42,20 +41,19 @@ const AddEntry = () => {
   } = useSpeechRecognition();
 
   const handleChange = (e) => {
-  const { name, value, files } = e.target;
-  
-  if (name === 'bill' && files && files[0]) {
-    setFormData((prev) => ({ ...prev, bill: files[0] }));
-    runOCR(files[0]); 
-  } else if (name === 'warrantyPdf' && files && files[0]) { // <-- ADDED THIS BLOCK
-    setFormData((prev) => ({ ...prev, warrantyPdf: files[0] }));
-  } else {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
-};
+    const { name, value, files } = e.target;
+    
+    if (name === 'bill' && files && files[0]) {
+      setFormData((prev) => ({ ...prev, bill: files[0] }));
+      runOCR(files[0]); 
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
   // Auto-fetch emission factor with Gemini fallback
   useEffect(() => {
     const fetchEmissionFactor = async () => {
@@ -281,16 +279,11 @@ const AddEntry = () => {
           form.append('bill', formData.bill);
         }
 
-       if (activeTab === 'product') {
-  form.append('warrantyPeriod', item.warrantyPeriod !== undefined && item.warrantyPeriod !== null ? item.warrantyPeriod : (formData.warrantyPeriod || ''));
-  
-  // Append the warranty PDF if it exists
-  if (formData.warrantyPdf) {
-    form.append('warrantyPdf', formData.warrantyPdf); // <-- ADDED THIS BLOCK
-  }
-} else {
-  form.append('expiryDate', finalExpiryDate);
-}
+        if (activeTab === 'product') {
+          form.append('warrantyPeriod', item.warrantyPeriod !== undefined && item.warrantyPeriod !== null ? item.warrantyPeriod : (formData.warrantyPeriod || ''));
+        } else {
+          form.append('expiryDate', finalExpiryDate);
+        }
 
         const response = await fetch('https://my-node-backend-gold.vercel.app/api/entries/add', {
           method: 'POST',
@@ -690,32 +683,24 @@ const parseSpokenDate = (str) => {
                   className="w-full bg-slate-950/50 border border-slate-700 text-slate-400 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
                 />
               </div>
-{activeTab === 'product' ? (
-  <div className="space-y-4">
-    <div className="space-y-1">
-      <label className="text-slate-400 text-xs font-bold uppercase tracking-wider ml-1">Warranty (Months)</label>
-      <input 
-        type="number" name="warrantyPeriod" placeholder="e.g. 12" onChange={handleChange} value={formData.warrantyPeriod}
-        className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
-      />
-    </div>
-    <div className="space-y-1">
-      <label className="text-slate-400 text-xs font-bold uppercase tracking-wider ml-1">Upload Warranty Bill / Info (PDF)</label>
-      <input 
-        type="file" name="warrantyPdf" accept="application/pdf" onChange={handleChange}
-        className="w-full text-slate-400 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600/20 file:text-indigo-400 hover:file:bg-indigo-600/30"
-      />
-    </div>
-  </div>
-) : (
-  <div className="space-y-1">
-    <label className="text-slate-400 text-xs font-bold uppercase tracking-wider ml-1">Expiry Date</label>
-    <input 
-      type="date" name="expiryDate" onChange={handleChange} value={formData.expiryDate}
-      className="w-full bg-slate-950/50 border border-slate-700 text-slate-400 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
-    />
-  </div>
-)}
+
+              {activeTab === 'product' ? (
+                <div className="space-y-1">
+                  <label className="text-slate-400 text-xs font-bold uppercase tracking-wider ml-1">Warranty (Months)</label>
+                  <input 
+                    type="number" name="warrantyPeriod" placeholder="e.g. 12" onChange={handleChange} value={formData.warrantyPeriod}
+                    className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-slate-400 text-xs font-bold uppercase tracking-wider ml-1">Expiry Date</label>
+                  <input 
+                    type="date" name="expiryDate" onChange={handleChange} value={formData.expiryDate}
+                    className="w-full bg-slate-950/50 border border-slate-700 text-slate-400 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-slate-400 text-xs font-bold uppercase tracking-wider ml-1">Upload Bill (AI Scan)</label>
